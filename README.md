@@ -146,10 +146,13 @@ Full methodology: [docs/methodology.md](docs/methodology.md)
 ## Repo Structure
 
 ```text
-docs/methodology.md     — Full development workflow, multi-model approach, V1 checklist
-docs/architecture.md    — 8-stage pipeline breakdown, automation tiers, approval model
-docs/verticals.md       — Per-vertical notes and full Nok Nok validated results
-templates/              — CLAUDE.md context template and client brief template
+docs/methodology.md        — Development workflow, multi-model orchestration, V1 checklist
+docs/architecture.md       — 8-stage pipeline breakdown, automation tiers, approval model
+docs/verticals.md          — Per-vertical notes and full Nok Nok validated results
+docs/knowledge-capture.md  — Operational knowledge intake: prep, suppliers, legacy sources
+docs/client-system.md      — Client-facing dashboard architecture, approval chain, Notion backend
+docs/agency-scaffold.md    — Repeatable scaffold, learning loop, relay system
+templates/                 — CLAUDE.md context template and client brief template
 ```
 
 ---
