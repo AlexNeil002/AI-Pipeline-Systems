@@ -83,8 +83,43 @@ This means each model handles what it is best suited for, context flows cleanly 
 
 Every system follows the same 8-stage shape:
 
-```text
-Raw → Validation → Clean → Mapping → Aggregation → Model → Output → Approval
+```mermaid
+graph TD
+    subgraph Sources["Data Sources"]
+        A1["POS System"]
+        A2["Bookings Platform"]
+        A3["Supplier Data"]
+        A4["Kitchen & Supplier\nIntake Forms"]
+    end
+
+    subgraph Pipeline["8-Stage Pipeline"]
+        B["Ingest & Validate\ndlt · Pandera"]
+        C["Clean\nDuckDB"]
+        D["Map\nHuman approved"]
+        E["Aggregate"]
+    end
+
+    subgraph AILayer["AI Model Layer — Pipeline Packets"]
+        F1["Revenue Forecast\nPacket 06"]
+        F2["Contribution Margin\nCM Engine"]
+        F3["No-Show Scoring\nDecision Science"]
+        F4["Demand · Inventory\nAnomaly · Retention\nPackets 02–05"]
+    end
+
+    A1 & A2 & A3 & A4 --> B
+    B --> C --> D --> E
+    E --> F1 & F2 & F3 & F4
+
+    F1 & F2 & F3 & F4 --> G{"Approval Gate\nHuman review required"}
+
+    G --> H["Review Pack\nSigned off per cycle"]
+    G --> I["Client Dashboard\nHTML · Auto-refresh"]
+    G --> J["Approved Action Log"]
+
+    H & I & J --> K[("Notion\nOperations Backend")]
+
+    style G fill:#6b2d1a,color:#ffffff
+    style K fill:#1a3a2e,color:#ffffff
 ```
 
 Each stage is independently testable. Each model output carries a confidence marker. Nothing reaches the client without passing through a human approval gate.
