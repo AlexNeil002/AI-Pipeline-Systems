@@ -189,6 +189,30 @@ The first live n8n workflow checks Nok Nok report freshness and agency dashboard
 
 ---
 
+## AI Model Orchestration
+
+Client projects use multiple AI models, not just one. **Notion** is the task and prompt hub that ties them together.
+
+Each project has a Notion task board with structured task records. Each task record contains:
+
+- The task description and acceptance criteria
+- The prompt to pass to the model
+- Which model is assigned (Codex / Claude Code / other)
+- The context snapshot at time of task creation
+- Output and approval status
+
+**Claude Code** and **OpenAI Codex** are used interchangeably — task type and cost guide the choice:
+
+- Multi-step implementation, reasoning over existing code → Claude Code (with CLAUDE.md context loaded)
+- Structured spec generation, step-by-step breakdowns → Codex
+- Lightweight drafts, summaries → lower-cost model where output quality allows
+
+Context flows between models through `CLAUDE.md` (read by Claude Code each session) and through the Notion task record (available to both). A task handed from Codex planning to Claude Code implementation does not require re-establishing project state.
+
+This is intentional AI ops design — not ad-hoc prompting.
+
+---
+
 ## Internal Agency Operations
 
 **Claude Cowork** (team plan) handles internal agency workflows:

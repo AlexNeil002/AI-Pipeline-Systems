@@ -28,11 +28,19 @@ Each data source gets its own **source contract** — a document that records wh
 
 ---
 
-## Phase 2 — Task Planning with OpenAI Codex
+## Phase 2 — Task Planning and Model Delegation
 
-Each pipeline component is planned as a discrete task using OpenAI Codex before any implementation begins.
+Each pipeline component is planned as a discrete task before any implementation begins. Tasks are managed in **Notion** — the central hub that holds structured task records, prompt templates, delegation decisions, and context for every active project.
 
-The planning prompt format:
+**Model selection:** Claude Code and OpenAI Codex are used interchangeably for planning and implementation. The choice is based on task type, context requirements, and cost:
+
+- Structured spec generation, step-by-step task breakdown → Codex
+- Complex multi-step implementation, reasoning over existing codebase → Claude Code
+- Routine drafts, summaries, review pack generation → lighter model where appropriate
+
+Both models receive the same project context — through the `CLAUDE.md` file and through the Notion task record. This means a task planned in Codex can be handed to Claude Code for implementation without re-explaining the project state.
+
+The planning prompt format (used across both models):
 
 ```text
 Context: [project type, data sources, prior decisions]
@@ -41,15 +49,13 @@ Constraints: [language, existing modules, integration requirements]
 Output: [what I need — spec, steps, pseudocode, file structure]
 ```
 
-Codex returns structured implementation steps. These become the task spec. The spec is reviewed before any editor is opened.
-
-This catches design problems before they become code problems.
+The spec is reviewed before any editor is opened. This catches design problems before they become code problems.
 
 ---
 
-## Phase 3 — Implementation with Claude Code
+## Phase 3 — Implementation with Persistent Context
 
-All code is written inside Claude Code with a project-level `CLAUDE.md` file that maintains persistent context across sessions.
+All code is written inside Claude Code with a project-level `CLAUDE.md` file that maintains persistent context across every session and across models.
 
 The CLAUDE.md records:
 
@@ -60,7 +66,7 @@ The CLAUDE.md records:
 - Key decisions and their rationale
 - Known data gaps and degraded modes in effect
 
-Claude Code reads this at the start of every session. There is no re-explaining the project — it picks up where it left off.
+Claude Code reads this at the start of every session. Codex accesses the same context through Notion. There is no re-explaining the project — any model picks up where the last session left off.
 
 ---
 
@@ -168,15 +174,15 @@ A client system is not at V1 until all of the following are true:
 
 | Tool | Role |
 | --- | --- |
-| OpenAI Codex | Task planning, spec generation |
-| Claude Code | Implementation, persistent session context via CLAUDE.md |
+| OpenAI Codex | Spec generation, structured task planning |
+| Claude Code | Implementation, multi-step reasoning, persistent context via CLAUDE.md |
+| Notion | Task hub — structured prompts, model delegation, cross-session context |
 | Python | Core pipeline language |
 | dlt | Data ingestion and loading |
 | Pandera | Schema validation at every stage |
 | DuckDB | Local analytical storage — no infrastructure required |
 | n8n (Docker) | Workflow automation — orchestration, digests, alerts |
 | GitHub | Version control, branch-per-task isolation |
-| Notion | Client CRM, task tracking, approval history |
 | HTML dashboards | Client-facing status and output views |
 | Claude Cowork | Internal agency operations (drafts, reviews, routing) |
 
