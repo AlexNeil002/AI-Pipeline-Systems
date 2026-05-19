@@ -1,158 +1,117 @@
-# AI Pipeline Systems
+# AI Pipeline Systems — Alex Neil
 
-Modular AI operational systems for small and medium businesses. Built to convert raw business data into daily decisions — without requiring a data team.
+I build systems that connect real business data to AI models and deliver the output into working operations. This repo documents the methodology and architecture behind that work — the approach I use, the tools I use them with, and the results from a live client engagement.
 
----
-
-## What This Is
-
-A showcase of the methodology, architecture, and workflow I use to build AI pipeline systems for SMB clients. This repo documents the thinking and structure behind the builds — not proprietary client code.
-
-The core idea: most SMBs are sitting on operational data they never act on. A well-designed pipeline surfaces that data as structured, approval-gated intelligence.
-
-Client repos are private. This repo documents the reusable methodology.
+This is not a course project. It is active work.
 
 ---
 
-## Architecture Overview
+## What I Do
 
-```mermaid
-graph TD
-    A[Business Data Sources<br/>POS · Bookings · Inventory · Suppliers] --> B[Packet 01: Ingest & Validate<br/>dlt · Pandera · DuckDB]
-    B --> C[Packet 02–05: Demand · Inventory · Anomaly · Retention]
-    B --> D[CM Engine: Contribution Margin<br/>Revenue classification · COGS mode]
-    C --> E[Decision Science Layer<br/>Forecasting · Scoring · Exception queues]
-    D --> E
-    E --> F{Approval Gate<br/>Human review required}
-    F --> G[Review Pack<br/>Markdown · HTML]
-    F --> H[Client Dashboard<br/>HTML · auto-refresh]
-    G --> I[Approved Action Log]
-    H --> I
+Most businesses trying to integrate AI have the same problem: they have data, they have a model, and no reliable system connecting the two. The output is either not trustworthy, not usable, or both.
 
-    style A fill:#1a1a2e,color:#e0e0e0
-    style B fill:#2d1b69,color:#e0e0e0
-    style F fill:#6b2d1a,color:#e0e0e0
-    style G fill:#1a3a2e,color:#e0e0e0
-    style H fill:#1a3a2e,color:#e0e0e0
-```
+I build the connecting layer — ingestion, validation, AI processing, approval gates, and client-facing output — as a system that can run repeatedly, flag its own gaps, and never produce a confident answer from incomplete data.
 
-**Data flows in. Decisions go through a human. Approved actions flow out.**
+The technical work covers:
+
+- **AI model integration** — connecting structured business data to Claude (Anthropic) for analysis, classification, and decision support
+- **Prompt engineering and output validation** — designing prompts that produce structured, testable outputs; validating model behaviour against real data
+- **Pipeline architecture** — data ingestion (dlt), schema validation (Pandera), local analytics (DuckDB), workflow automation (n8n)
+- **Testing and confidence scoring** — every model output carries a confidence marker; low-confidence outputs are routed to review, not surfaced as reliable
+- **Approval gate design** — building systems where AI prepares and humans approve, so the automation can be trusted
 
 ---
 
-## Pipeline Stages
+## Live Work — Nok Nok Restaurant (Client 001)
 
-Every client system follows the same 8-stage shape:
+The first complete client engagement. A restaurant in Mumbles, Wales. Used to validate the full pipeline end-to-end on real operational data.
 
-| Stage | What happens |
-| --- | --- |
-| **Raw** | Source data landed as-is, no modification |
-| **Validation** | Schema checks, freshness flags, import log, missing sources list |
-| **Clean** | Standardised dates, values, statuses — source traceability preserved |
-| **Mapping** | Source names → canonical entities, unmapped queue, confidence scored |
-| **Aggregation** | Daily totals, rolling averages, period comparisons |
-| **Model** | Business logic applied — forecasting, scoring, classification |
-| **Output** | Review pack, exception queue, dashboard |
-| **Approval** | Human reviews, signs off, logs decision + reason |
+**Data ingested and cleaned:**
 
----
+- Square POS — 46,304 transaction rows (UTF-16 encoding, GBP handling, refund logic)
+- ResOS bookings — 5,000 rows (tab-delimited, status normalisation)
 
-## SMB Verticals
+**Systems built and validated:**
 
-| Vertical | Primary Sources | Key Outputs |
+| System | What it does | Status |
 | --- | --- | --- |
-| Restaurant | Square POS, ResOS bookings | Revenue forecasting, no-show scoring, contribution margin |
-| Retail | EPOS, inventory system | Stock reorder triggers, slow-mover alerts, margin by SKU |
-| Salon / Beauty | Booking platform | Stylist utilisation, rebooking gaps, at-risk clients |
-| Gym / Fitness | Membership, class attendance | Churn risk scoring, capacity optimisation |
-| Trades | Job management, invoicing | Job profitability, quote conversion, invoice overdue alerts |
-| E-commerce | Orders, returns, ad spend | ROAS by channel, product margin, fulfilment flags |
+| Packet 01 — Ingest & Validate | Schema validation, import logs, missing source detection | Production-ready |
+| Packet 06 — Revenue Forecast | Revenue forecasting from historical sales patterns | Live (degraded mode — no COGS yet) |
+| CM Engine — Contribution Margin | Classifies 533 menu items into A/B/C revenue bands | Validated |
+| No-Show Engine | Scores upcoming bookings for no-show probability; overbooking recommendations to weekly review pack | Gate 2 complete, 44/44 tests passing |
 
-**Validated on real client data:** Restaurant (Nok Nok, Mumbles — Client 001)
+**Degraded mode handling:** COGS data not yet received from client. Rather than blocking or overclaiming, the CM Engine and revenue forecast run in `revenue_only_mode=true` — outputs are confidence-marked as low and routed to operator review only. This is documented in the review pack with an explicit COGS warning before any sign-off block.
 
----
+**Client interface:** HTML dashboard (auto-refresh every 5 minutes), weekly review pack with operator approval log, bookmarked and in active use.
 
-## Automation Tiers
-
-Not all automation is equal. Every client system uses a tiered model with hard approval boundaries:
-
-| Tier | Capability | Status |
-| --- | --- | --- |
-| 0 | Manual checklists, human review | Active — all decisions |
-| 1 | AI drafts, summaries, file organisation | Active |
-| 2 | Schema validation, freshness checks, exception queues | Active |
-| 3 | Mapping suggestions, anomaly notes, priority queues | Active |
-| 4 | Read-only integrations — fetch, compare, monitor | Active |
-| 5 | Approved writes — draft reports, internal updates | Active |
-| 6 | Business-critical automation | Deferred until trust proven |
-
-**Hard rule:** Agents prepare. Humans approve. Tier 6 only when governance is mature.
+Full detail: [docs/verticals.md](docs/verticals.md)
 
 ---
 
-## Development Workflow
+## Pipeline Architecture
+
+Every system I build follows the same 8-stage shape:
 
 ```text
-Plan → Spec → Build → Gate → Review → Approve → Ship
+Raw → Validation → Clean → Mapping → Aggregation → Model → Output → Approval
 ```
 
-| Phase | Tool | Purpose |
-| --- | --- | --- |
-| Plan | OpenAI Codex | Spec every task, generate implementation steps |
-| Build | Claude Code | Implement inside repo with persistent CLAUDE.md context |
-| Version control | GitHub (branch-per-task) | Every feature isolated, clean history |
-| Validation | dlt · Pandera | Schema validation, source contract enforcement |
-| Local storage | DuckDB | Analytical queries without infrastructure |
-| Automation | n8n (Docker) | Workflow orchestration — refresh, digest, alert |
-| Client interface | Notion · HTML dashboards | Review packs, approval logs, status views |
+Each stage is independently testable. Each model output carries a confidence marker. Nothing reaches the client without passing through a human approval gate.
 
-Full methodology: [docs/methodology.md](docs/methodology.md)
+Full breakdown: [docs/architecture.md](docs/architecture.md)
+
+---
+
+## Automation and Tooling
+
+**n8n (self-hosted, Docker)** — workflow orchestration: scheduled pipeline runs, file detection, exception alerts, internal status digests. No external dependencies.
+
+**Tiered automation model** — not all automation is equal. I use a 0–6 tier model where:
+
+- Tiers 0–5 are active on current client work (validation, AI drafts, exception queues, approved writes)
+- Tier 6 (business-critical automation) is explicitly deferred until lower tiers have proven reliable
+
+This is the approach I'd apply inside any organisation integrating AI for the first time: start with the tiers you can validate, build trust incrementally, and only automate actions that have earned it.
 
 ---
 
 ## Stack
 
-- **AI**: Claude (Anthropic), OpenAI Codex
-- **Language**: Python
-- **Data validation**: dlt, Pandera
-- **Local analytics**: DuckDB
-- **Automation**: n8n (self-hosted via Docker)
-- **Version control**: GitHub
-- **Client interface**: Notion, static HTML dashboards
-- **Internal operations**: Claude Cowork (team plan)
+| Layer | Tools |
+| --- | --- |
+| AI models | Claude (Anthropic), OpenAI Codex |
+| Language | Python |
+| Data ingestion | dlt |
+| Schema validation | Pandera |
+| Local analytics | DuckDB |
+| Workflow automation | n8n (Docker) |
+| Version control | GitHub |
+| Client interface | HTML dashboards, Notion |
+| Internal ops | Claude Cowork (team plan) |
+
+---
+
+## Methodology
+
+```text
+Plan (Codex) → Build (Claude Code) → Validate (dlt + Pandera) → Review → Approve → Ship
+```
+
+Every task is planned before a line of code is written. Every data source has a source contract before any logic runs on it. Every model output is tested and confidence-marked. Branch-per-task on GitHub throughout.
+
+Full methodology: [docs/methodology.md](docs/methodology.md)
 
 ---
 
 ## Repo Structure
 
 ```text
-ai-pipeline-systems/
-├── README.md                     # This file
-├── CLAUDE.md                     # Persistent AI context for this repo
-├── docs/
-│   ├── methodology.md            # Plan → build → approval workflow
-│   ├── architecture.md           # 8-stage pipeline breakdown
-│   └── verticals.md              # Vertical-specific implementation notes
-└── templates/
-    ├── CLAUDE.md.template        # Starting context file for new client projects
-    └── client-brief.md           # Client scoping and onboarding document
+docs/methodology.md     — Full development workflow
+docs/architecture.md    — 8-stage pipeline breakdown
+docs/verticals.md       — Per-vertical implementation notes and Nok Nok detail
+templates/              — CLAUDE.md and client brief templates
 ```
 
 ---
 
-## Templates
-
-- [CLAUDE.md template](templates/CLAUDE.md.template) — persistent AI context file for any new project
-- [Client brief template](templates/client-brief.md) — scoping, data inventory, output definition
-
----
-
-## About
-
-I build AI operational systems for SMBs that want their data to actually work for them. Every engagement starts with a data audit, moves through a structured V1 delivery, and scales into a recurring operational loop.
-
-Methodology-first: every task is planned before a line of code is written, every data source has a contract before any logic runs on it, and every model output goes through a human approval gate before it reaches the client.
-
----
-
-*Client work is private. This repo documents the methodology and architecture behind it.*
+*Client repos are private. This repo documents the methodology, architecture, and validated results.*
