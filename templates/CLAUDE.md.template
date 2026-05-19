@@ -1,4 +1,4 @@
-# CLAUDE.md — [CLIENT NAME] Pipeline Project
+# CLAUDE.md — [CLIENT NAME] Operational System
 
 > Persistent context file for Claude Code. Update this at the end of every session.
 > Claude reads this at the start of each session — no re-explaining the project needed.
@@ -9,89 +9,97 @@
 
 **Client:** [CLIENT NAME]
 **Vertical:** [restaurant | retail | salon | gym | trades | e-commerce]
-**Project goal:** [One sentence: what this pipeline will do for the client]
+**Project goal:** [One sentence: what operational decision this system supports]
 **Start date:** [YYYY-MM-DD]
-**Status:** [Planning | In progress | Review | Live]
+**Status:** [Audit | V1 In Progress | V1 Complete | V2 Planning]
 
 ---
 
 ## Data Sources
 
-| Source | Type | Access method | Notes |
-|---|---|---|---|
-| [e.g. Square POS] | Transactions | API / CSV export | [e.g. daily export at 23:00] |
-| | | | |
+| Source | Type | Format / Access | Quirks | Source contract |
+| --- | --- | --- | --- | --- |
+| [e.g. Square POS] | Transactions | CSV export, UTF-16 | GBP symbol, refund rows negative | [path/to/contract.md] |
+| [e.g. ResOS] | Bookings | CSV, tab-delimited | Status field needs normalisation | [path/to/contract.md] |
 
-**Data quality notes:** [Any known gaps, inconsistencies, or manual steps in the data]
+**Active data gaps:**
+
+- [e.g. COGS data not yet received — CM Engine running in revenue_only_mode]
+- [e.g. Customer IDs not available — Packet 05 blocked]
+
+---
+
+## Pipeline Packets
+
+| Packet | Function | Status | Notes |
+| --- | --- | --- | --- |
+| Packet 01 | Ingest & validation | [Not started / In progress / Validated] | |
+| Packet 02 | Demand forecasting | [Not started / Planned] | |
+| Packet 03 | Inventory reorder | [Not started / Planned] | |
+| Packet 04 | Anomaly detection | [Not started / Planned] | |
+| Packet 05 | Churn / retention | [Not started / Blocked — needs customer IDs] | |
+| Packet 06 | Revenue forecasting | [Not started / Implemented] | |
+| CM Engine | Contribution margin | [Not started / Revenue-only mode] | |
+| Decision Science | [No-show scoring / other] | [Not started / Gate N complete] | |
+
+---
+
+## Active Degraded Modes
+
+| Mode | Cause | Effect | Resolution path |
+| --- | --- | --- | --- |
+| [e.g. revenue_only_mode=true] | [COGS data missing] | [CM outputs confidence=low, review-only] | [Receive supplier cost data] |
 
 ---
 
 ## Architecture Decisions
 
-[Record key decisions made and the reasoning behind them. E.g.:]
-- Using daily batch ingestion (not real-time) because client POS only exports at end of day
-- Normalising all categories to internal taxonomy before AI layer — POS codes are inconsistent
-- Notion chosen as output layer over email because client already uses Notion daily
+[Record key decisions and the reasoning. Example:]
 
----
-
-## Modules Built
-
-| Module | File | Status | Notes |
-|---|---|---|---|
-| Ingestion | [src/ingestion.py] | Complete | Handles X and Y sources |
-| Normalisation | [src/normalise.py] | Complete | |
-| AI processing | [src/ai_layer.py] | In progress | |
-| Notion output | [src/notion_output.py] | Not started | |
-
----
-
-## Modules In Progress
-
-**Currently building:** [module name]
-**Branch:** [feature/branch-name]
-**Spec:** [Link to Notion task or paste spec here]
+- Using daily batch ingestion — client POS only exports at end of day, no API available
+- DuckDB for local storage — no infrastructure required at V1 scale
+- HTML dashboard preferred over Notion at this stage — client not a Notion user
 
 ---
 
 ## Current Branch
 
-```
+```text
 [feature/current-task-name]
 ```
 
----
-
-## Key Context for This Session
-
-[Paste anything Claude needs to know to pick up where you left off — what you were in the middle of, any blockers, any decisions pending]
+**Active task:** [What is being built right now]
+**Spec source:** [Codex output / Notion task / inline]
 
 ---
 
-## Client Notes
+## Approval Owner
 
-[Anything specific to this client that affects implementation — their tech comfort level, how they want to receive output, any constraints on their data or systems]
-
----
-
-## Zapier Automations Configured
-
-| Trigger | Action | Status |
-|---|---|---|
-| [e.g. Low stock flag] | [e.g. WhatsApp to owner] | [Live / Testing / Planned] |
+**Name:** [Who signs off on review packs]
+**Format:** [HTML review pack / Markdown / Notion page]
+**Frequency:** [Weekly / per cycle]
 
 ---
 
-## Notion Dashboard Structure
+## Client Interface
 
-| Database / Page | Purpose | Update frequency |
-|---|---|---|
-| [Daily Briefing] | [Owner morning summary] | [Daily at 07:00] |
+| Interface | URL / Path | Last updated | Auto-refresh |
+| --- | --- | --- | --- |
+| [Dashboard] | [path/to/index.html] | [YYYY-MM-DD] | [5 min] |
+| [Review pack] | [path/to/review-pack.md] | [YYYY-MM-DD] | Manual |
+
+---
+
+## n8n Automations
+
+| Workflow | Trigger | Action | Status |
+| --- | --- | --- | --- |
+| [e.g. Daily status digest] | [Schedule / file watch] | [Writes digest to local folder] | [Ready / Active / Paused] |
 
 ---
 
 ## Session Log
 
 | Date | What was done | Branch | Next step |
-|---|---|---|---|
-| [YYYY-MM-DD] | [e.g. Built ingestion module, POS API connected] | [feature/ingestion] | [Normalisation layer] |
+| --- | --- | --- | --- |
+| [YYYY-MM-DD] | [e.g. Packet 01 validated, both sources clean] | [feature/packet-01] | [Start CM Engine] |

@@ -1,25 +1,51 @@
 # SMB Vertical Implementation Notes
 
-How the pipeline architecture applies across each target vertical.
+How the pipeline architecture applies across each target vertical, and what has been learned from real delivery.
 
 ---
 
-## Restaurant
+## Restaurant — Validated (Client 001: Nok Nok, Mumbles)
 
-**Core challenge:** High transaction volume, fast inventory turnover, labour-sensitive margins.
+The first real client engagement. Used to validate the full pipeline methodology end-to-end.
 
-**Data sources:**
-- POS system (item-level sales, covers, time of day, payment split)
-- Reservation platform (covers booked vs. walked in, cancellations, no-shows)
-- Staff scheduling (if accessible — hours scheduled vs. hours traded)
+**Data sources used:**
 
-**Key pipeline outputs:**
-- Menu performance: top and bottom sellers by cover, by day part, by day of week
-- Labour efficiency: revenue per labour hour by shift
-- No-show pattern: day/time patterns driving reservation gaps
-- Daily briefing: what sold, what didn't, what to run as a special tomorrow
+- Square POS exports — 46,304 rows cleaned, UTF-16 encoding, GBP symbol handling, refund logic documented in source contract
+- ResOS bookings — 5,000 rows cleaned, tab-delimited, status normalisation required
 
-**Insight example:** "Tuesday lunch has run at 34% of Monday lunch revenue for the past 6 weeks. Your highest-margin items — the burger and the grilled chicken — underperform at lunch. Consider a focused lunch special anchored to those two."
+**Pipeline packets validated:**
+
+- Packet 01 (Ingest/Validation) — production-ready, both sources documented with full source contracts
+- Packet 06 (Revenue Forecasting) — implemented; running in degraded mode (no COGS yet), confidence = low, review-only
+- CM Engine — validated; 533 menu items classified into A/B/C revenue bands (A: 17, B: 40, C: 322, excluded: 154); revenue-only mode active
+- No-Show Engine (Decision Science Gate 2) — implemented; scores upcoming bookings for no-show probability from 35 confirmed no-shows and 578 cancellations across 5,000 bookings; outputs overbooking recommendations to weekly review pack; 44/44 tests passing
+
+**Key outputs:**
+
+- Revenue forecasting (degraded, review-only until COGS available)
+- Contribution margin bands by menu item
+- No-show probability scores for upcoming bookings
+- Weekly review pack with operator sign-off block
+- HTML dashboard with auto-refresh, bookmarked by client
+
+**Active data gaps:**
+
+- COGS data not yet received — blocks full margin analysis; revenue-only mode in effect across CM Engine and Packet 06
+- Customer identifiers not available — blocks churn scoring (Packet 05)
+- Menu CSV export not yet available — mapping partially manual
+
+**What Nok Nok taught the agency:**
+
+1. Source contracts must be written before any logic runs on the data — not documentation added after
+2. The 8-stage pipeline works end-to-end on real restaurant data
+3. Mapping is a recurring workflow, not a one-time task — new items appear as menus change
+4. Forecasting must be layered with confidence visibility — not direct signal-to-action
+5. Degraded modes must be explicit and documented — revenue_only_mode=true prevents overclaiming when COGS is missing
+6. Review packs are often the right first interface — not dashboards
+7. Approval gates prevent autonomous action on low-confidence or incomplete outputs
+8. Structured intake forms beat unstructured conversation for capturing data like recipes, yields, and supplier details
+9. The recurring operational cycle (refresh → validate → review → approve) is the actual product
+10. Tier 6 automation should wait — the value of Tiers 1–5 needs to be proven first
 
 ---
 
@@ -27,18 +53,22 @@ How the pipeline architecture applies across each target vertical.
 
 **Core challenge:** Inventory capital tied up in slow-moving stock, reorder timing, product mix decisions.
 
-**Data sources:**
+**Expected data sources:**
+
 - POS / EPOS (item, category, margin, payment method)
-- Inventory system or manual stock count (current levels, last reorder dates)
+- Inventory system or structured stock count (current levels, last reorder dates)
 - Supplier lead times (manual input or config)
 
-**Key pipeline outputs:**
-- Slow-stock alert: items below expected sell-through rate with days-of-stock remaining
-- Reorder trigger: items approaching minimum threshold based on lead time
-- Category performance: revenue and margin by category, week-over-week
-- Daily briefing: what moved, what's stagnating, what to reorder
+**Planned pipeline outputs:**
 
-**Insight example:** "You have 47 units of [product] with a current sell rate of 3 per week and 3 weeks of lead time. At this rate you'll hit zero stock in 4 weeks — reorder now to avoid a gap."
+- Slow-stock alert — items below expected sell-through rate with days-of-stock remaining
+- Reorder trigger — items approaching minimum threshold, adjusted for lead time
+- Category performance — revenue and margin by category, week-over-week
+- Contribution margin by SKU (requires COGS data from supplier)
+
+**Packet dependencies:** Packet 01 → Packet 03 (inventory reorder) → CM Engine
+
+**Known constraint:** Reorder triggers (Packet 03) require clean supplier lead time data. Without it, the packet runs in advisory mode only.
 
 ---
 
@@ -46,84 +76,100 @@ How the pipeline architecture applies across each target vertical.
 
 **Core challenge:** Chair and stylist utilisation, rebooking gaps, peak/off-peak imbalance.
 
-**Data sources:**
+**Expected data sources:**
+
 - Booking platform (appointments, stylist, service type, duration, cancellations, no-shows)
-- Client records (repeat visit rate, average spend, last visit date)
+- Client records (visit frequency, average spend, last visit date — if available)
 
-**Key pipeline outputs:**
-- Utilisation by stylist: booked hours vs. available hours
-- Rebooking gap analysis: clients overdue for their next visit
-- No-show pattern: which time slots and which client segments drive no-shows
-- At-risk clients: high-value clients who haven't rebooked within expected window
-- Daily briefing: today's column, gaps to fill, clients to chase
+**Planned pipeline outputs:**
 
-**Insight example:** "12 clients with average spend over £80 haven't rebooked in 8+ weeks. A targeted message to this group this week could recover £960 in bookings."
+- Utilisation by stylist — booked hours vs. available hours
+- Rebooking gap analysis — clients overdue within their expected revisit window
+- At-risk clients — high-value clients who haven't rebooked
+- No-show pattern — time slots and client segments driving no-shows (shares logic with No-Show Engine from restaurant vertical)
+
+**Packet dependencies:** Packet 01 → Decision Science (No-Show Engine, adapted) → Packet 05 (retention scoring)
+
+**Known constraint:** Retention scoring (Packet 05) requires stable customer identifiers. Many salon booking platforms use email or phone as the identifier — needs source contract review per client.
 
 ---
 
 ## Gym / Fitness
 
-**Core challenge:** Membership churn, class capacity, underused off-peak slots.
+**Core challenge:** Membership churn, class capacity optimisation, underused off-peak slots.
 
-**Data sources:**
-- Membership platform (active/lapsed/churned, join date, membership type)
+**Expected data sources:**
+
+- Membership platform (active/lapsed/churned, join date, membership type, payment status)
 - Class booking system (bookings, attendance, cancellations, waitlist)
 - Payment system (failed payments as leading churn indicator)
 
-**Key pipeline outputs:**
-- Churn risk score: members with declining attendance + payment friction
-- Class capacity: consistently underbooked slots vs. consistently full slots
-- Retention alert: members approaching typical churn window (45/60/90 days low activity)
-- Daily briefing: attendance summary, at-risk members, class fill rates
+**Planned pipeline outputs:**
 
-**Insight example:** "17 members have attended fewer than 2 sessions in the past 30 days and are on month-to-month memberships. This cohort has a 68% historical churn rate at this point. Automated check-in message recommended."
+- Churn risk score — members with declining attendance and payment friction
+- Class capacity analysis — consistently underbooked vs. consistently full slots
+- Retention alert — members approaching typical churn window (45/60/90-day low-activity flags)
+
+**Packet dependencies:** Packet 01 → Packet 05 (churn/retention)
+
+**Note:** Churn scoring accuracy improves significantly with 6+ months of attendance history. New client onboarding with limited history will produce low-confidence scores initially.
 
 ---
 
 ## Trades (Plumber, Electrician, Builder, etc.)
 
-**Core challenge:** Job profitability visibility, quote conversion, cash flow from invoicing.
+**Core challenge:** Job profitability visibility, quote conversion tracking, cash flow from invoicing.
 
-**Data sources:**
+**Expected data sources:**
+
 - Job management platform (job status, time logged, materials, invoiced amount)
-- Quote tracker (quotes sent, won, lost, conversion rate)
-- Invoicing/accounting (paid, outstanding, overdue)
+- Quote tracker (quotes sent, won, lost — often manual or in a job management tool)
+- Invoicing / accounting system (paid, outstanding, overdue)
 
-**Key pipeline outputs:**
-- Job profitability: revenue vs. time + materials per job, by job type
-- Quote conversion: win rate by job type, by customer segment, by quote size
-- Outstanding invoice alert: overdue invoices with days outstanding
-- Daily briefing: jobs in progress, invoices to chase, quotes to follow up
+**Planned pipeline outputs:**
 
-**Insight example:** "Your bathroom refits average £340 profit per job. Your kitchen refits average £90. You're currently pricing kitchen work at the same day rate but spending 40% more time on average. Repricing this job type would add ~£1,200/month at current volume."
+- Job profitability — revenue vs. time and materials per job, by job type
+- Quote conversion rate — win rate by job type and quote size
+- Outstanding invoice alert — overdue invoices with days outstanding and escalation flag
+
+**Packet dependencies:** Packet 01 → CM Engine (job-type margin, not menu items) → Packet 04 (anomaly — unusually long jobs, zero-margin jobs)
+
+**Known constraint:** Job management data quality varies significantly by trades client. Many use paper-based or informal systems. Source contract review and potential manual data entry phase required before pipeline can run reliably.
 
 ---
 
 ## E-commerce
 
-**Core challenge:** ROAS, product-level margin, fulfilment efficiency, return patterns.
+**Core challenge:** ROAS accuracy, product-level margin, return patterns, fulfilment efficiency.
 
-**Data sources:**
-- Orders platform (orders, items, revenue, discount applied)
-- Returns data (return rate, reason, SKU-level)
-- Ad platform (spend, clicks, conversions by campaign/channel)
-- Fulfilment (dispatch time, carrier, delivery success rate)
+**Expected data sources:**
 
-**Key pipeline outputs:**
-- ROAS by channel and campaign: what ad spend is actually converting
-- Product margin: revenue minus COGS minus return cost, by SKU
-- Return pattern: high-return SKUs and the stated reasons
-- Fulfilment flags: orders outside expected dispatch window
-- Daily briefing: yesterday's revenue, top products, flagged SKUs, ad performance
+- Orders platform (orders, items, revenue, discount applied, fulfilment status)
+- Returns data (return rate by SKU, reason codes)
+- Ad platform exports (spend, clicks, conversions by campaign and channel)
+- Fulfilment / carrier data (dispatch time, delivery success rate)
 
-**Insight example:** "Your Facebook campaign for [product category] has generated £1,800 in revenue at £620 spend this week — ROAS 2.9. Your Google Shopping for the same category is running at ROAS 5.1 at lower spend. Budget reallocation opportunity."
+**Planned pipeline outputs:**
+
+- ROAS by channel and campaign — revenue attributed vs. spend
+- Product margin — revenue minus COGS minus return cost, by SKU (requires COGS data)
+- Return pattern — high-return SKUs with reason code analysis
+- Fulfilment flags — orders outside expected dispatch window
+
+**Packet dependencies:** Packet 01 → CM Engine (SKU margin) → Packet 04 (anomaly — ROAS drops, return spikes) → Packet 06 (revenue forecast by channel)
+
+**Note:** ROAS attribution accuracy depends on platform export quality. Multi-channel attribution (Google + Meta + email) requires careful source contract documentation to avoid double-counting.
 
 ---
 
-## Common Threads Across Verticals
+## Common Patterns Across Verticals
 
-Every vertical pipeline shares the same underlying structure — only the data sources and AI prompt templates change. This means:
+All six verticals share the same pipeline shape. What changes is configuration:
 
-- New verticals can be onboarded faster using existing modules
-- Lessons from one vertical (e.g. churn detection patterns from gyms) can be adapted for others (e.g. salon rebooking gaps)
-- The client-facing output (Notion dashboard + daily briefing) is consistent regardless of vertical, which simplifies client onboarding
+- **Source contracts** — documenting the specific quirks of each client's data format
+- **Mapping tables** — translating source-specific labels into the canonical schema
+- **CM Engine mode** — full margin analysis (if COGS available) or revenue-only (degraded)
+- **Confidence thresholds** — what confidence level triggers a review-only flag vs. auto-proceed
+- **Review pack format** — sections and sign-off blocks adapted to the vertical's decision context
+
+Lessons from one vertical transfer to others. The no-show scoring logic built for Nok Nok (restaurant) applies directly to salon appointment gaps and gym class no-shows — different data shapes, same underlying decision pattern.
