@@ -1,0 +1,97 @@
+# CLAUDE.md — [CLIENT NAME] Pipeline Project
+
+> Persistent context file for Claude Code. Update this at the end of every session.
+> Claude reads this at the start of each session — no re-explaining the project needed.
+
+---
+
+## Project Overview
+
+**Client:** [CLIENT NAME]
+**Vertical:** [restaurant | retail | salon | gym | trades | e-commerce]
+**Project goal:** [One sentence: what this pipeline will do for the client]
+**Start date:** [YYYY-MM-DD]
+**Status:** [Planning | In progress | Review | Live]
+
+---
+
+## Data Sources
+
+| Source | Type | Access method | Notes |
+|---|---|---|---|
+| [e.g. Square POS] | Transactions | API / CSV export | [e.g. daily export at 23:00] |
+| | | | |
+
+**Data quality notes:** [Any known gaps, inconsistencies, or manual steps in the data]
+
+---
+
+## Architecture Decisions
+
+[Record key decisions made and the reasoning behind them. E.g.:]
+- Using daily batch ingestion (not real-time) because client POS only exports at end of day
+- Normalising all categories to internal taxonomy before AI layer — POS codes are inconsistent
+- Notion chosen as output layer over email because client already uses Notion daily
+
+---
+
+## Modules Built
+
+| Module | File | Status | Notes |
+|---|---|---|---|
+| Ingestion | [src/ingestion.py] | Complete | Handles X and Y sources |
+| Normalisation | [src/normalise.py] | Complete | |
+| AI processing | [src/ai_layer.py] | In progress | |
+| Notion output | [src/notion_output.py] | Not started | |
+
+---
+
+## Modules In Progress
+
+**Currently building:** [module name]
+**Branch:** [feature/branch-name]
+**Spec:** [Link to Notion task or paste spec here]
+
+---
+
+## Current Branch
+
+```
+[feature/current-task-name]
+```
+
+---
+
+## Key Context for This Session
+
+[Paste anything Claude needs to know to pick up where you left off — what you were in the middle of, any blockers, any decisions pending]
+
+---
+
+## Client Notes
+
+[Anything specific to this client that affects implementation — their tech comfort level, how they want to receive output, any constraints on their data or systems]
+
+---
+
+## Zapier Automations Configured
+
+| Trigger | Action | Status |
+|---|---|---|
+| [e.g. Low stock flag] | [e.g. WhatsApp to owner] | [Live / Testing / Planned] |
+
+---
+
+## Notion Dashboard Structure
+
+| Database / Page | Purpose | Update frequency |
+|---|---|---|
+| [Daily Briefing] | [Owner morning summary] | [Daily at 07:00] |
+
+---
+
+## Session Log
+
+| Date | What was done | Branch | Next step |
+|---|---|---|---|
+| [YYYY-MM-DD] | [e.g. Built ingestion module, POS API connected] | [feature/ingestion] | [Normalisation layer] |
