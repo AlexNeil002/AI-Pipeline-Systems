@@ -1,4 +1,4 @@
-# AI Pipeline Systems — Alex Neil
+# AI Pipeline Systems — Alexander William Neil
 
 I build systems that connect real business data to AI models and deliver the output into working operations. This repo documents the methodology and architecture behind that work — the approach I use, the tools I use them with, and the results from a live client engagement.
 
